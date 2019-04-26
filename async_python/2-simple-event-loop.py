@@ -1,19 +1,24 @@
 import socket
-from select import select
+import selectors
 
 
-to_monitor = []
+selector = selectors.DefaultSelector()
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server_socket.bind(('localhost', 5001))
-server_socket.listen()
+def server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('localhost', 5001))
+    server_socket.listen()
+
+    selector.register(fileobj=server_socket, events=selectors.EVENT_READ, data=accept_connection)
+
 
 
 def accept_connection(server_socket):
     client_socket, addr = server_socket.accept()
     print('Connection from', addr)
-    to_monitor.append(client_socket)
+
+    selector.register(fileobj=client_socket, events=selectors.EVENT_READ, data=send_message)
 
 
 def send_message(client_socket):
@@ -24,20 +29,20 @@ def send_message(client_socket):
             response = "hello\n".encode()
             client_socket.send(response)
         else:
+            selector.unregister(client_socket)
             client_socket.close()
 
 
 def event_loop():
     while True:
-        ready_to_read, _, _ = select(to_monitor, [], [])
+        events = selector.select()
 
-        for sock in ready_to_read:
-            if sock in server_socket:
-                accept_connection(sock)
-            else:
-                send_message(sock)
+        for key, _ in events:
+            callback = key.data
+            callbask(key.fuleobj)
+
 
 
 if __name__ == "__main__":
-    to_monitor.append(server_socket)
+    server()
     event_loop()
