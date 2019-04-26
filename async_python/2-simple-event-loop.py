@@ -39,7 +39,7 @@ def event_loop():
 
         for key, _ in events:
             callback = key.data
-            callbask(key.fuleobj)
+            callbask(key.fileobj)
 
 
 
